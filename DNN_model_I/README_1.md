@@ -18,7 +18,7 @@ external-test evaluation, inference timing, and figure/data export.
 
 ## Current model configuration
 
-The active configuration in `src/train_regression_model.py` is:
+The active configuration in `src/DNN_model_I.py` is:
 
 | Parameter | Value |
 | --- | --- |
@@ -47,16 +47,15 @@ and size of the hidden layers without rewriting the model class.
 
 ## Input data
 
-By default, place the CSV files in the `data/` directory:
+Place the CSV files in the `Data/` directory:
 
 ```text
-data/
-├── datatest_pump_beta2_ZDW_200000.csv
-└── Input_Output20000Data_feat.csv
+Data/
+├── dataset_200000.csv
+└── dataset_ext_20000.csv
 ```
 
-The first file is used for training and validation. The second is optional and
-is used as an external test dataset.
+The first file is used for training and validation. The second is used as an external test dataset.
 
 ### Required input columns
 
@@ -84,10 +83,8 @@ also enforces non-negative values for `max_gain_dB` before training/evaluation.
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── data/
-│   └── README.md
 └── src/
-    └── train_regression_model.py
+    └── DNN_model_I.py
 ```
 
 When the script runs, it creates an `outputs/` directory automatically:
@@ -140,15 +137,7 @@ environment if the default `pip install torch` build is not suitable.
 With the default folder structure:
 
 ```bash
-python src/train_regression_model.py
-```
-
-You can also specify paths explicitly:
-
-```bash
-python src/train_regression_model.py \
-    --data-path data/datatest_pump_beta2_ZDW_200000.csv \
-    --external-data-path data/Input_Output20000Data_feat.csv
+python src/DNN_model_I.py
 ```
 
 ### Useful command-line options
@@ -167,7 +156,7 @@ python src/train_regression_model.py \
 View the complete command-line help with:
 
 ```bash
-python src/train_regression_model.py --help
+python src/DNN_model_I.py --help
 ```
 
 ## Preprocessing
@@ -281,14 +270,6 @@ The following are also ignored by default:
 - timing output;
 - Python caches and virtual environments.
 
-If the datasets or selected result files are intended to accompany a paper and
-you have permission to redistribute them, adjust `.gitignore` deliberately
-rather than committing them accidentally.
-
-## License
-
-No license has been selected yet. Add a `LICENSE` file before public release if
-you want to specify how others may use, modify, and redistribute the code.
 
 ## Citation
 
