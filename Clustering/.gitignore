@@ -1,0 +1,45 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Generated clustering results
+outputs/
+
+# Generated scientific/result files outside outputs, if any
+*.mat
+generated_plot_png_mat_manifest.csv
+
+# Logs
+*.log
+
+# CSV files in data/ are intentionally NOT ignored.
+# The datasets are part of this repository.

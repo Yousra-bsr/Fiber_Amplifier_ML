@@ -1,0 +1,51 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+
+# Generated Ray Tune and training outputs
+outputs/
+ray_results/
+ray_results_b300/
+
+# Model checkpoints
+*.pth
+*.pt
+*.ckpt
+
+# Generated result files outside outputs, if any
+validation_predictions_*.csv
+external_test_predictions_*.csv
+*.log
+
+# IMPORTANT:
+# CSV files in data/ are intentionally NOT ignored.
+# The project datasets are meant to be shared with the code.
