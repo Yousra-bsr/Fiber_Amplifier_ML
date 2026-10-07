@@ -1,4 +1,4 @@
-# Multi-Target Neural-Network Regression for NF and Maximum Gain
+# Multi-Target Neural-Network Regression for NF and Maximum Gain (Model I)
 
 This repository contains a PyTorch regression workflow for predicting two
 targets simultaneously:
