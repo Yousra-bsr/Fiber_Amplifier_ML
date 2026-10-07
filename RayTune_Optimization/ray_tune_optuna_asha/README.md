@@ -44,7 +44,7 @@ Architecture candidates:
 Put the project-owned CSV files in:
 
 ```text
-data/
+Data/
 ├── dataset_nlse_300000.csv
 ├── dataset_ext_nlse_20000.csv
 ├── dataset_200000.csv
@@ -77,12 +77,6 @@ max_gain_dB
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── data/
-│   ├── README.md
-│   ├── dataset_nlse_300000.csv
-│   ├── dataset_ext_nlse_20000.csv
-│   ├── dataset_200000.csv
-│   └── dataset_ext_20000.csv
 └── src/
     └── ray_tune_hyperparameter_search.py
 ```
