@@ -6,7 +6,6 @@ This repository contains a PyTorch regression workflow for predicting
 NLSE dataset.
 
 The script uses the selected Ray Tune configuration as fixed model settings.
-Ray Tune itself is not required to run this repository.
 
 ## Active model configuration
 
