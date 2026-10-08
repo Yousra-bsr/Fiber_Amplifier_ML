@@ -1,6 +1,7 @@
 # Ray Tune + Optuna + ASHA Regression Search
 
 This repository contains a GPU-aware hyperparameter-search workflow for a four-input, two-target PyTorch MLP.
+The code can run on either a GPU or a CPU, although GPU acceleration is recommended for faster hyperparameter search.
 
 The regression targets are `NF_dB` and `max_gain_dB`. 
 Hyperparameter search is performed with **Ray Tune**, **Optuna**, and **ASHA**.
