@@ -1,0 +1,22 @@
+# MATLAB generated/cache files
+*.asv
+*.m~
+*.autosave
+slprj/
+codegen/
+
+# Generated numerical/figure outputs
+outputs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor settings
+.vscode/
+.idea/
+
+# IMPORTANT:
+# CSV files in data/ are intentionally NOT ignored.
+# The project-owned numerical datasets should be committed with the code.
