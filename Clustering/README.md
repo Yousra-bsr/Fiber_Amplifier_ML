@@ -54,7 +54,7 @@ matches the inverse-design distance used in the associated analysis.
 The repository is intended to include both project-owned CSV datasets:
 
 ```text
-data/
+Data/
 ├── dataset_200000.csv
 └── dataset_nlse_300000.csv
 ```
@@ -105,10 +105,6 @@ clustering dataset.
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── data/
-│   ├── README.md
-│   ├── dataset_200000.csv
-│   └── dataset_nlse_300000.csv
 └── src/
     └── kmeans_inverse_design.py
 ```
@@ -197,51 +193,6 @@ python src/kmeans_inverse_design.py \
     --desired-nf 1.7 \
     --desired-gain 9.0
 ```
-
-## Specify the dataset paths
-
-```bash
-python src/kmeans_inverse_design.py \
-    --model-i-data-path data/dataset_model_i.csv \
-    --model-ii-data-path data/dataset_model_ii.csv
-```
-
-## Command-line options
-
-Important options include:
-
-```text
---model-i-data-path PATH
---model-ii-data-path PATH
---clustering-dataset {model-i,model-ii}
---desired-nf VALUE
---desired-gain VALUE
---n-clusters N
---cluster-min N
---cluster-max N
---local-candidates N
---closest-samples N
---quantile-low VALUE
---quantile-high VALUE
---silhouette-sample-size N
---output-dir PATH
-```
-
-Use:
-
-```bash
-python src/kmeans_inverse_design.py --help
-```
-
-to see every option.
-
-Set:
-
-```bash
---silhouette-sample-size 0
-```
-
-to use the entire selected clustering dataset for silhouette scoring.
 
 ## Main outputs
 
