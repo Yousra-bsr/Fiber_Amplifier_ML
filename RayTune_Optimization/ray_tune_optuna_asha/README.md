@@ -7,7 +7,7 @@ The regression targets are `NF_dB` and `max_gain_dB`.
 Hyperparameter search is performed with **Ray Tune**, **Optuna**, and **ASHA**.
 
 The purpose of this script is only to identify and save the best hyperparameter configuration.
-It does **not** retrain a final DNN model after the search.
+It does **not** train a final DNN model after the search.
 The selected hyperparameters are intended to be used later in a separate DNN training code.
 
 ## What is searched
@@ -145,11 +145,6 @@ When `BASE_DIR` is set, the script expects the training dataset directly under t
 $BASE_DIR/dataset_nlse_300000.csv
 ```
 
-or, after changing the selected dataset in the script:
-
-```text
-$BASE_DIR/dataset_200000.csv
-```
 
 Generated files are written to:
 
@@ -200,25 +195,6 @@ The repository default keeps:
 BATCH_CHOICES=64,128,256
 ```
 
-## Performance design retained
-
-The search-only code keeps the important GPU-oriented performance choices from the original research script:
-
-- fractional Ray GPU resources so multiple trials can share each physical GPU;
-- one host-to-device transfer of the trial data;
-- device-side shuffling;
-- GPU-resident validation;
-- no per-minibatch `.item()` synchronization;
-- BF16 autocast when supported;
-- fused AdamW with a compatibility fallback;
-- TF32/high-throughput CUDA matrix paths;
-- precomputed ASINH target transformations and target scalers;
-- Ray object-store sharing of preprocessed trial data;
-- optional `torch.compile`;
-- automatic CPU/GPU resource detection;
-- configurable trial concurrency.
-
-These optimizations are particularly useful when many Ray Tune trials are executed on multi-GPU systems.
 
 ## Target preprocessing
 

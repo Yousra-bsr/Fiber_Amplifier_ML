@@ -1,12 +1,9 @@
 # Data
 
-Place the project-owned datasets in this directory:
-
 #Dataset for Model II
 - `dataset_nlse_300000.csv` — training/validation dataset for Model II
-- `dataset_ext_nlse_20000.csv` — external test dataset for Model II
+- `dataset_ext_nlse_20000.csv` — external test dataset (unseen data not used for training or validation) for Model II
 
-Or
 
 #Dateset for Model I
 - `dataset_200000.csv` — training/validation dataset for Model I

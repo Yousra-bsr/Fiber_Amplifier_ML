@@ -8,7 +8,7 @@ targets simultaneously:
 
 The model uses four physical/input features and the currently selected
 Ray-Tune-based architecture. The training script includes preprocessing,
-target transformation, training with early stopping, validation, optional
+target transformation, training with early stopping, validation, 
 external-test evaluation, inference timing, and figure/data export.
 
 > **Note**
@@ -140,25 +140,6 @@ With the default folder structure:
 python src/DNN_model_I.py
 ```
 
-### Useful command-line options
-
-```text
---data-path PATH
---external-data-path PATH
---output-dir PATH
---checkpoint-path PATH
---epochs N
---batch-size N
---sample-index N
---timing-repeats N
-```
-
-View the complete command-line help with:
-
-```bash
-python src/DNN_model_I.py --help
-```
-
 ## Preprocessing
 
 The workflow:
@@ -168,7 +149,7 @@ The workflow:
 3. enforces non-negative `max_gain_dB`;
 4. creates a reproducible train/validation split;
 5. standardizes the four input features;
-6. applies the optional column-wise ASINH target transform;
+6. applies the column-wise ASINH target transform;
 7. standardizes the transformed targets.
 
 The target transform is
@@ -194,7 +175,6 @@ The model is trained with:
 The best validation-loss checkpoint is saved rather than only retaining the
 final epoch.
 
-Sample weighting has intentionally been removed from this cleaned version.
 
 ## Evaluation metrics
 
@@ -212,7 +192,7 @@ Validation MAE and R² on the scaled targets are also recorded during training.
 
 ## Figures and MATLAB data
 
-Non-histogram figures are saved as:
+Figures are saved as:
 
 - PDF
 - PNG
@@ -222,7 +202,7 @@ The script generates training/validation loss curves, validation MAE and R²
 curves, predicted-vs-actual plots, and absolute-error-vs-actual plots.
 
 Target-distribution and prediction-error histograms are displayed but are not
-saved, matching the original workflow.
+saved.
 
 ## External test evaluation
 
@@ -256,22 +236,7 @@ split also uses this seed.
 Exact numerical reproducibility can still depend on hardware, PyTorch/CUDA
 versions, and GPU operations.
 
-## Data and generated files
-
-CSV datasets are ignored by Git by default to avoid accidentally publishing
-large or restricted research data.
-
-The following are also ignored by default:
-
-- trained `.pth` / `.pt` checkpoints;
-- generated `outputs/`;
-- MATLAB `.mat` files;
-- generated prediction CSV files;
-- timing output;
-- Python caches and virtual environments.
-
 
 ## Citation
 
-If this repository accompanies a publication, add the final paper citation,
-DOI, or BibTeX entry here once available.
+Citation, DOI, or BibTeX entry here once available.

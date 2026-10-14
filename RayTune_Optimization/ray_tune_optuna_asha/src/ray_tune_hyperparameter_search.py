@@ -2,9 +2,9 @@
 Ray Tune + Optuna + ASHA hyperparameter search for a four-input,
 two-target PyTorch MLP, with GPU-oriented execution options.
 
-This script performs hyperparameter optimization only. It intentionally
-DOES NOT retrain a separate final DNN after Ray Tune finishes. The best
-hyperparameters are saved for use by another DNN training script (DNN_model_I and DNN_model_II).
+This script performs hyperparameter optimization only. It DOES NOT train a separate
+final DNN after Ray Tune finishes. The best hyperparameters are saved for use by
+ another DNN training script (DNN_model_I and DNN_model_II).
 
 Important: Ray Tune trials still train temporary candidate networks. This is
 required so Optuna can compare configurations and ASHA can stop weak trials.
@@ -27,17 +27,16 @@ required so Optuna can compare configurations and ASHA can stop weak trials.
 #   - TF32 / high-precision TensorFloat matrix paths are enabled.
 #   - Target transforms/scalers are precomputed once for the discrete search
 #     space and shared with Ray workers through the object store.
-#   - The repository default keeps BATCH_CHOICES=64,128,256 for
-#     reproducibility. Override BATCH_CHOICES for larger GPU-focused batches.
+#   
 #
 # Main speed knobs (environment variables):
 #   TRIALS_PER_GPU=4          # try 2, 4, then 8 on B300
-#   BATCH_CHOICES=512,1024,2048,4096
+#   BATCH_CHOICES= 64,128,256
 #   USE_BF16=1
 #   TUNE_COMPILE=0            # compile cost can hurt short ASHA trials
 #   CPUS_PER_TRIAL=2
 #   SYSTEM_RESERVED_CPUS=4
-#   BASE_DIR=/workspace/labs_yousra
+#   BASE_DIR=/workspace/labs
 #   RAY_STORAGE_PATH=/tmp/ray_results_b300
 # ============================================================
 """
@@ -113,11 +112,14 @@ else:
 
 # Dataset used for the hyperparameter search.
 # Model II:
-OUTPUT_DIR = BASE_DIR / "outputs"
+
+RAYTUNE_DIR = Path(__file__).resolve().parents[2]
+OUTPUT_DIR = RAYTUNE_DIR / "outputs"
 DATA_PATH = DATA_DIR / "dataset_nlse_300000.csv"
 
 # Model I :
-#OUTPUT_DIR = BASE_DIR / "outputs"
+#RAYTUNE_DIR = Path(__file__).resolve().parents[2]
+#OUTPUT_DIR = RAYTUNE_DIR / "outputs"
 #DATA_PATH = DATA_DIR / "dataset_200000.csv"
 
 RAY_STORAGE_PATH = Path(

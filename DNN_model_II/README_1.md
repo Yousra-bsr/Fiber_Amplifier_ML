@@ -44,7 +44,7 @@ Data/
 ```
 
 The first file is used for training and validation. The second is used for
-external testing when present.
+external testing on unseen data.
 
 ### Required input columns
 
@@ -127,26 +127,6 @@ With the default layout:
 python src/DNN_model_II.py
 ```
 
-```
-
-## Useful command-line options
-
-```text
---data-path PATH
---external-data-path PATH
---output-dir PATH
---checkpoint-path PATH
---epochs N
---batch-size N
---sample-index N
---timing-repeats N
-```
-
-Show all options with:
-
-```bash
-python src/DNN_model_II.py --help
-```
 
 ## Preprocessing
 
@@ -157,7 +137,7 @@ The workflow:
 3. enforces non-negative maximum gain;
 4. creates a reproducible train/validation split;
 5. standardizes the four input features;
-6. applies the optional ASINH transformation to both targets;
+6. applies the ASINH transformation to both targets;
 7. standardizes the transformed targets.
 
 The target transform is:
@@ -181,8 +161,6 @@ Training uses:
 
 The best validation-loss checkpoint is saved.
 
-Sample weighting has intentionally been removed from this cleaned repository
-version because the active research script sets the weighting strength to zero.
 
 ## Evaluation metrics
 
@@ -200,7 +178,7 @@ Validation MAE and R² on scaled targets are also tracked during training.
 
 ## External-test evaluation
 
-If `dataTest_nlse_40000.csv` exists, the script:
+If `dataTest_nlse_20000.csv` exists, the script:
 
 1. validates its columns;
 2. predicts both targets;
@@ -222,7 +200,7 @@ Two measurements are saved:
 
 ## Figures and MATLAB data
 
-Non-histogram figures are saved as PDF and PNG, with corresponding MATLAB
+Figures are saved as PDF and PNG, with corresponding MATLAB
 `.mat` numerical data. Histogram diagnostics are displayed but are not saved.
 
 ## Reproducibility
@@ -246,6 +224,5 @@ and editor files are excluded through `.gitignore`.
 
 ## Citation
 
-If this repository accompanies a publication, add the final citation, DOI, or
-BibTeX entry here.
+Citation, DOI, or BibTeX entry here.
 

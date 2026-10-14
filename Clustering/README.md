@@ -1,355 +1,122 @@
 # KMeans Performance-Region Clustering for Inverse Design
 
-This repository implements a KMeans-based inverse-design workflow in the
-two-dimensional performance space defined by `NF_dB` and `max_gain_dB`.
+This code uses **KMeans clustering** to explore inverse design in the two-dimensional performance space defined by noise figure (`NF_dB`) and maximum gain (`max_gain_dB`). It compares the datasets generated using **Model I** and **Model II**, then clusters model II dataset to identify existing parameter combinations near a desired NF/gain target.
 
-The analysis compares the performance spaces of **Model I** and **Model II**,
-identifies the KMeans performance region associated with a desired NF/gain
-target, and then selects nearby samples **inside that region** to infer
-physically relevant input-parameter distributions and robust ranges.
+The method recommends **candidate input-parameter ranges based on nearby samples in the dataset**. 
 
 ## Workflow
 
-The script:
+1. Load and clean the Model I and Model II datasets and compare their NF/gain performance spaces.
+2. Select **Model I** or **Model II** for KMeans analysis.
+3. Standardize `NF_dB` and `max_gain_dB` using `StandardScaler` fitted on the selected dataset.
+4. Evaluate candidate cluster counts using the elbow method (inertia) and silhouette scores.
+5. Fit the final KMeans model on the complete selected dataset and identify the region containing the desired target.
+6. Rank the existing samples within that region by their Euclidean distance to the target in standardized NF/gain space.
+7. Select the nearest local candidates, summarize their input parameters, and plot their distributions and pairwise relationships.
+8. Save the figures and their underlying MATLAB `.mat` data, along with CSV summaries and candidate tables.
 
-1. loads and cleans the Model I and Model II datasets;
-2. compares their NF/gain performance spaces;
-3. selects either Model I or Model II for clustering;
-4. standardizes `[NF_dB, max_gain_dB]` for KMeans clustering;
-5. evaluates KMeans cluster counts using inertia and silhouette score;
-6. fits the final KMeans model;
-7. assigns the desired target to a KMeans performance region;
-8. ranks samples inside that region in the original NF/gain coordinates;
-9. retains a configurable local inverse-design candidate set;
-10. summarizes robust input-parameter ranges;
-11. creates performance-space, distribution, and pairwise plots;
-12. saves CSV, PNG, and MATLAB `.mat` outputs in separate folders.
+## Repository layout and input data
 
-## Euclidean distance for local candidate selection
-
-The local inverse-design candidates are ranked using Euclidean distance in the
-original NF/gain coordinates:
-
-\[
-d =
-\sqrt{
-(NF-NF^*)^2 +
-(G_{\max}-G_{\max}^*)^2
-}
-\]
-
-where:
-
-- `NF` is the sample noise figure;
-- `NF*` is the desired noise figure;
-- `G_max` is the sample maximum gain;
-- `G_max*` is the desired maximum gain.
-
-This distance definition is applied directly in the original dB coordinates and
-matches the inverse-design distance used in the associated analysis.
-
-
-## Data
-
-The repository is intended to include both project-owned CSV datasets:
+The code expects this directory layout:
 
 ```text
-Data/
-├── dataset_200000.csv
-└── dataset_nlse_300000.csv
-```
+GithubProject/
+├── data/
+│   ├── dataset_200000.csv            # Model I
+│   └── dataset_nlse_300000.csv       # Model II
+└── Clustering/
+    ├── README.md
+    ├── src/
+    │   └── kmeans_inverse_design.py
+    └── outputs/                      
 
-The exact filenames can be specified through the command-line options.
+The input CSV files must contain:
 
-Required columns are:
+| Input parameters | Target parameters |
+| --- | --- |
+| `pump_signal_sep_nm` | `NF_dB` |
+| `pump_power_dBm` | `max_gain_dB` |
+| `beta2_ps2_per_km` | |
+| `zero_disp_wavelength_nm` | |
 
-### Inputs
-
-```text
-pump_signal_sep_nm
-pump_power_dBm
-beta2_ps2_per_km
-zero_disp_wavelength_nm
-```
-
-### Targets
-
-```text
-NF_dB
-max_gain_dB
-```
+Rows containing missing or infinite values are removed, and negative `max_gain_dB` values are clipped to zero, as implemented in the script.
 
 ## Default configuration
 
-| Parameter | Default |
-| --- | ---: |
-| Dataset used for clustering | Model II |
-| Final KMeans regions | 3 |
-| Random seed | 42 |
-| Desired NF | 1.7 dB |
-| Desired maximum gain | 9.0 dB |
-| Diagnostic k values | 2, 3, 4, 5 |
-| Silhouette sample size | 20,000 |
-| Local inverse candidates | 500 |
-| Closest samples saved separately | 10 |
-| Robust local interval | 10th–90th percentile |
+Edit the configuration section near the beginning of `src/kmeans_inverse_design.py`:
 
-For silhouette diagnostics, one fixed random subset is reused for each tested
-value of `k`, while KMeans itself is fitted using the complete selected
-clustering dataset.
+| Setting | Default |
+| --- | --- |
+| `CLUSTERING_DATASET` | `"model-ii"` |
+| `N_CLUSTERS` | `3` |
+| `CLUSTER_RANGE` | `range(2, 6)` (k = 2, 3, 4, 5) |
+| `RANDOM_SEED` | `42` |
+| `SILHOUETTE_SAMPLE_SIZE` | `20000` |
+| `DESIRED_NF_DB` | `1.7` dB |
+| `DESIRED_GAIN_DB` | `9.0` dB |
+| `N_LOCAL_CANDIDATES` | `500` |
+| `NUM_CLOSEST_SAMPLES` | `10` |
+| `LOCAL_QUANTILE_LOW`, `LOCAL_QUANTILE_HIGH` | `0.10`, `0.90` |
+| `SAVE_INDIVIDUAL_COMPARISON_PANELS` | `True` |
 
-## Repository structure
+Set `CLUSTERING_DATASET = "model-i"` to cluster Model I instead. Both datasets are still loaded for comparison. Set `SILHOUETTE_SAMPLE_SIZE = None` to score all samples; this may require substantially more time and memory.
 
-```text
-.
-├── README.md
-├── requirements.txt
-├── .gitignore
-└── src/
-    └── kmeans_inverse_design.py
-```
+**Silhouette diagnostics:** Each KMeans model is fitted on the complete selected dataset (`n_init=10`). Its silhouette score is evaluated on the same fixed random subset of up to 20,000 samples for all tested `k` values. The silhouette scores are therefore subset estimates, whereas inertia is computed from the full fit.
 
-Generated files are written under:
+## Installation and execution
 
-```text
-outputs/
-└── clustering/
-    ├── png/
-    ├── mat/
-    └── csv/
-```
-
-The output folders contain:
-
-```text
-outputs/clustering/png/
-    PNG figures
-
-outputs/clustering/mat/
-    MATLAB .mat files containing the numerical data used for the figures
-
-outputs/clustering/csv/
-    CSV tables, summaries, candidate sets, and the PNG/MAT manifest
-```
-
-The complete `outputs/` directory is ignored by Git because these results can
-be regenerated from the shared source code and data.
-
-## Installation
-
-Python 3.10 or newer is recommended.
-
-### Windows PowerShell
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-### macOS / Linux
+Install the required Python packages in your environment:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python -m pip install numpy pandas matplotlib scipy scikit-learn
 ```
 
-Install the dependencies:
-
-```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-## Run the default analysis
+From the `Clustering` directory, run:
 
 ```bash
 python src/kmeans_inverse_design.py
 ```
 
-Both Model I and Model II datasets are loaded and compared.
+## Local candidate selection
 
-By default, **Model II** is used for KMeans clustering.
-
-## Choose which dataset is clustered
-
-To cluster Model I:
-
-```bash
-python src/kmeans_inverse_design.py \
-    --clustering-dataset model-i
-```
-
-To cluster Model II:
-
-```bash
-python src/kmeans_inverse_design.py \
-    --clustering-dataset model-ii
-```
-
-## Change the desired inverse-design target
-
-```bash
-python src/kmeans_inverse_design.py \
-    --desired-nf 1.7 \
-    --desired-gain 9.0
-```
-
-## Main outputs
-
-### CSV outputs
-
-CSV files are written to:
-
-```text
-outputs/clustering/csv/
-```
-
-They include:
-
-- the combined Model I / Model II dataset;
-- KMeans performance-region centers;
-- KMeans region-level summaries;
-- distances from KMeans region centers to the desired target;
-- samples in the recommended KMeans region;
-- local inverse-design candidates;
-- robust local input-parameter summaries;
-- target-space summaries;
-- closest existing samples;
-- the selected clustering dataset with KMeans labels;
-- the generated PNG/MAT manifest.
-
-### PNG outputs
-
-Figures are written to:
-
-```text
-outputs/clustering/png/
-```
-
-They include:
-
-- Model I / Model II NF-gain comparisons;
-- elbow diagnostics;
-- silhouette-score diagnostics;
-- KMeans performance regions;
-- desired-target and local-candidate visualization;
-- local input-parameter distributions;
-- pairwise input-parameter relationships.
-
-### MATLAB outputs
-
-MATLAB `.mat` files are written to:
-
-```text
-outputs/clustering/mat/
-```
-
-For registered figures, the corresponding `.mat` file contains the numerical
-data used to generate the PNG figure.
-
-For example:
-
-```text
-outputs/clustering/png/kmeans_performance_regions_NF_gain_space.png
-outputs/clustering/mat/kmeans_performance_regions_NF_gain_space.mat
-```
-
-The script also creates a CSV manifest that checks whether each generated
-PNG/MAT pair exists.
-
-## Local inverse-design
-
-After the desired target is assigned to a KMeans performance region, all samples
-inside that region are ranked using Euclidean distance in the original
-`[NF_dB, max_gain_dB]` coordinates:
+Let the desired target be \((NF^*, G^*)\). The code fits a `StandardScaler` to the selected dataset's two outputs and calculates the distance of each sample in the recommended KMeans region:
 
 \[
-d =
-\sqrt{
-(NF-NF^*)^2 +
-(G_{\max}-G_{\max}^*)^2
-}
+d_i = \sqrt{\left(\frac{NF_i-NF^*}{\sigma_{NF}}\right)^2 + \left(\frac{G_i-G^*}{\sigma_G}\right)^2}
 \]
 
-The nearest samples form the local inverse-design candidate family.
+Here, \(\sigma_{NF}\) and \(\sigma_G\) are the standard deviations used by the fitted scaler. The nearest **500** samples form the local candidate set. The **10** closest are also saved separately.
 
-For each input parameter, the code reports:
 
-- minimum;
-- lower quantile;
-- mean;
-- median;
-- upper quantile;
-- maximum;
-- standard deviation.
+For each of the four input parameters, the local candidate summary includes the minimum, mean, median, maximum, standard deviation, and the 10th and 90th percentiles. The 10th–90th percentile interval describes the selected candidates;
 
-By default, the robust recommendation interval is the **10th to 90th
-percentile** of the local inverse-design candidates.
 
-The input parameters analyzed are:
+## Generated outputs
+
+The script automatically creates three subdirectories under `Clustering/outputs/`:
 
 ```text
-pump_signal_sep_nm
-pump_power_dBm
-beta2_ps2_per_km
-zero_disp_wavelength_nm
+Clustering/
+└── outputs/
+    ├── png/
+    ├── mat/
+    └── csv/
 ```
 
-## KMeans clustering
+- **`png/`** contains Model I/Model II comparison plots, KMeans elbow and silhouette diagnostics, performance-region figures, the desired-target and local-candidate plot, the combined 2×2 input-distribution figure, and the pairwise input-parameter matrix.
+- **`mat/`** contains numerical data corresponding to the PNG figures. Each `.mat` file has the same basename as its PNG counterpart; it is a data file, not a native MATLAB `.fig` file.
+- **`csv/`** contains the combined Model I/Model II dataset, labeled clustering dataset, region centers and summaries, region distances, selected samples, local candidates, closest samples, and input/target summary tables.
 
-KMeans clustering is performed in standardized NF/gain space.
+Examples:
 
-The selected dataset is transformed using `StandardScaler` before KMeans is
-fitted. This prevents the relative numerical spread of NF and maximum gain from
-controlling the clustering geometry.
+```text
+Clustering/outputs/png/kmeans_performance_regions_NF_gain_space.png
+Clustering/outputs/mat/kmeans_performance_regions_NF_gain_space.mat
+Clustering/outputs/csv/kmeans_local_inverse_design_candidates.csv
+Clustering/outputs/csv/kmeans_local_input_parameter_summary.csv
+```
 
-The cluster centers are subsequently transformed back to the original NF/gain
-units for interpretation and reporting.
-
-This standardization applies to the **KMeans clustering stage only**.
-
-The local inverse-design candidate ranking uses the original-unit Euclidean
-distance described above.
 
 ## Reproducibility
 
-The default random seed is:
-
-```text
-42
-```
-
-KMeans uses:
-
-```text
-n_init = 10
-```
-
-For silhouette diagnostics, the same fixed random subset is used for every
-tested number of clusters so that the silhouette scores can be compared
-consistently.
-
-## Version-control policy
-
-The repository is configured to share:
-
-- source code;
-- documentation;
-- Model I data;
-- Model II data.
-
-Generated outputs are excluded through `.gitignore`, including:
-
-```text
-outputs/
-```
-
-This prevents generated PNG, MAT, and CSV result files from being committed
-while keeping the source datasets available in the repository.
-
-Python caches, virtual environments, operating-system files, and editor-specific
-files are also excluded.
-
-
-## Citation
-Paper citation, DOI, or BibTeX entry here.
+KMeans uses `random_state=42` and `n_init=10`. The fixed silhouette subset uses the same random seed. Cluster labels are identifiers without intrinsic ranking; the selected cluster is determined by applying the fitted KMeans model to the standardized desired target.
