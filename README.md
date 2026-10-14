@@ -127,7 +127,3 @@ The codes and computational workflows in this repository are associated with the
 
 *"Deep-learning surrogate model for rapid quantum-noise computation in dual-pump fiber-optic phase-sensitive amplifiers"*
 
-
-## Authors
-
-Yousra Bouasria, Debanuj Chatterjee, Abdessamad Belfakir, and Debabrota Bas.
