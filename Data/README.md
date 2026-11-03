@@ -1,19 +1,16 @@
 # Data
 
-#Dataset for Model II
-- `dataset_nlse_300000.csv` — training/validation dataset for Model II
-- `dataset_ext_nlse_20000.csv` — external test dataset (unseen data not used for training or validation) for Model II
-
-
-#Dateset for Model I
-- `dataset_200000.csv` — training/validation dataset for Model I
-- `dataset_ext_20000.csv` — external test dataset for Model I
+#All datasets used in this project should be included here.
+#Dataset used for training/validation and external test.
+- `dataset_300000.csv` — training/validation dataset.
+- `dataset_50000.csv` — external test dataset (unseen data not used for training or validation).
+ 
 
 Input columns:
 
 - `pump_signal_sep_nm`
 - `pump_power_dBm`
-- `beta2_ps2_per_km`
+- `Dcc_ps`
 - `zero_disp_wavelength_nm`
 
 Target columns:

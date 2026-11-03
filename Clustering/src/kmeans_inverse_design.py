@@ -2,14 +2,15 @@
 KMeans performance-region clustering and local inverse-design analysis.
 
 
-Compare Model I (Inoue) and Model II (NLSE), cluster the selected dataset in
+Compare two datasets, cluster the selected dataset in
 standardized [NF, gain] space, and select nearby inverse-design candidates using
 standardized NF/gain distance.
 
 
 # Main workflow:
-#   1. Load model I and model II data
-#   2. Compare the two NF/Gain performance spaces
+#   1. Load two different datasets.
+#   2. Compare the two NF/Gain performance spaces. Load and clean the dataset.
+#      Optionally, compare two different datasets(this section is commented out in the code; uncomment it if needed).
 #   3. Scale [NF_dB, max_gain_dB]
 #   4. Run KMeans diagnostics: elbow + silhouette
 #   5. Fit the final KMeans model
@@ -53,9 +54,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_FOLDER = PROJECT_ROOT / "data"
 
 
-MODEL_I_DATA_PATH = DATA_FOLDER / "dataset_200000.csv"
-MODEL_II_DATA_PATH = DATA_FOLDER / "dataset_nlse_300000.csv"
-
+MODEL_I_DATA_PATH = DATA_FOLDER / "dataset_300000.csv"  
+MODEL_II_DATA_PATH = DATA_FOLDER / "dataset_300000.csv" #
 
 # Dataset used for the KMeans inverse-design analysis below.
 # Choose either "model-i" or "model-ii".
@@ -70,7 +70,7 @@ MODEL_FILE_NAMES = {"model-i": "model_i", "model-ii": "model_ii"}
 INPUT_COLS = [
     "pump_signal_sep_nm",
     "pump_power_dBm",
-    "beta2_ps2_per_km",
+    "Dcc_ps",
     "zero_disp_wavelength_nm"
 ]
 
@@ -95,8 +95,8 @@ RANDOM_SEED = 42
 
 
 # Desired inverse-design target
-DESIRED_NF_DB = 1.7
-DESIRED_GAIN_DB = 9.0
+DESIRED_NF_DB = 0.3
+DESIRED_GAIN_DB = 20.0
 
 
 # Number of very closest existing samples printed/saved separately
@@ -112,13 +112,13 @@ LOCAL_QUANTILE_LOW = 0.10
 LOCAL_QUANTILE_HIGH = 0.90
 
 # Range of K values tested for diagnostics.
-# range(2, 6) means k = 2, 3, 4, 5.
-CLUSTER_RANGE = range(2, 6)
+# range(2, 8) means k = 2, 3, 4, 5, 6, 7.
+CLUSTER_RANGE = range(2, 8)
 
 # Optional silhouette subsampling.
 # Set to None to use the entire clustering dataset.
-# For very large datasets, e.g. 200000 samples, 20000 is much faster.
-SILHOUETTE_SAMPLE_SIZE = 20000
+# For very large datasets, e.g. 300000 samples, 30000 is much faster.
+SILHOUETTE_SAMPLE_SIZE = 30000
 
 
 # Output folder
@@ -254,405 +254,405 @@ for dataset_name, dataset in [("Model I", df_model_i), ("Model II", df_model_ii)
 # ============================================================
 # 2C. Combined Model I-Model II scatter plot in NF/Gain space
 # ===========================================================
-print("\n--- Plotting Model I and Model II in the same NF-Gain figure ---")
+# print("\n--- Plotting Model I and Model II in the same NF-Gain figure ---")
 
-plt.figure(figsize=(10, 7))
+# plt.figure(figsize=(10, 7))
 
-plt.scatter(
-    df_model_i[NF_COL],
-    df_model_i[GAIN_COL],
-    s=10,
-    alpha=0.5,
-    marker="o",
-    edgecolors="none",
-    label=f"Model I dataset, n={len(df_model_i):,}"
-)
-
-
-plt.scatter(
-    df_model_ii[NF_COL],
-    df_model_ii[GAIN_COL],
-    s=10,
-    alpha=0.5,
-    marker="^",
-    edgecolors="none",
-    label=f"Model II dataset, n={len(df_model_ii):,}"
-)
+# plt.scatter(
+#     df_model_i[NF_COL],
+#     df_model_i[GAIN_COL],
+#     s=10,
+#     alpha=0.5,
+#     marker="o",
+#     edgecolors="none",
+#     label=f"Model I dataset, n={len(df_model_i):,}"
+# )
 
 
-plt.scatter(
-    DESIRED_NF_DB,
-    DESIRED_GAIN_DB,
-    s=250,
-    marker="*",
-    edgecolors="black",
-    linewidths=1.2,
-    label=(
-        f"Desired target: NF={DESIRED_NF_DB:.2f} dB, "
-        f"Gain={DESIRED_GAIN_DB:.2f} dB"
-    ),
-    zorder=10
-)
+# plt.scatter(
+#     df_model_ii[NF_COL],
+#     df_model_ii[GAIN_COL],
+#     s=10,
+#     alpha=0.5,
+#     marker="^",
+#     edgecolors="none",
+#     label=f"Model II dataset, n={len(df_model_ii):,}"
+# )
 
 
-plt.xlabel("NF (dB)")
-plt.ylabel("Maximum gain (dB)")
-plt.title("Comparison of Model I and Model II Datasets\nin NF-Gain Performance Space")
-plt.grid(True, linestyle=":", alpha=0.6)
-plt.legend(loc="best", frameon=True)
-plt.tight_layout()
-
-comparison_plot_path = PNG_FOLDER / "model_i_vs_model_ii_NF_gain_comparison.png"
-
-plt.savefig(comparison_plot_path, dpi=300, bbox_inches="tight")
-
-
-save_figure_mat(
-    comparison_plot_path,
-    model_i_NF_dB=df_model_i[NF_COL],
-    model_i_max_gain_dB=df_model_i[GAIN_COL],
-    model_ii_NF_dB=df_model_ii[NF_COL],
-    model_ii_max_gain_dB=df_model_ii[GAIN_COL],
-    desired_NF_dB=DESIRED_NF_DB,
-    desired_max_gain_dB=DESIRED_GAIN_DB
-)
+# plt.scatter(
+#     DESIRED_NF_DB,
+#     DESIRED_GAIN_DB,
+#     s=250,
+#     marker="*",
+#     edgecolors="black",
+#     linewidths=1.2,
+#     label=(
+#         f"Desired target: NF={DESIRED_NF_DB:.2f} dB, "
+#         f"Gain={DESIRED_GAIN_DB:.2f} dB"
+#     ),
+#     zorder=10
+# )
 
 
-plt.show()
-print(f"Combined comparison figure saved to: {comparison_plot_path}")
+# plt.xlabel("NF (dB)")
+# plt.ylabel("Maximum gain (dB)")
+# plt.title("Comparison of Model I and Model II Datasets\nin NF-Gain Performance Space")
+# plt.grid(True, linestyle=":", alpha=0.6)
+# plt.legend(loc="best", frameon=True)
+# plt.tight_layout()
+
+# comparison_plot_path = PNG_FOLDER / "model_i_vs_model_ii_NF_gain_comparison.png"
+
+# plt.savefig(comparison_plot_path, dpi=300, bbox_inches="tight")
+
+
+# save_figure_mat(
+#     comparison_plot_path,
+#     model_i_NF_dB=df_model_i[NF_COL],
+#     model_i_max_gain_dB=df_model_i[GAIN_COL],
+#     model_ii_NF_dB=df_model_ii[NF_COL],
+#     model_ii_max_gain_dB=df_model_ii[GAIN_COL],
+#     desired_NF_dB=DESIRED_NF_DB,
+#     desired_max_gain_dB=DESIRED_GAIN_DB
+# )
+
+
+# plt.show()
+# print(f"Combined comparison figure saved to: {comparison_plot_path}")
 
 # ============================================================
 # 2D. Detailed three-panel Model I-Model II comparison
 # ============================================================
 
-print("\n--- Creating detailed Model I-Model II comparison figure ---")
-
-
-fig, axes = plt.subplots(
-    nrows=1,
-    ncols=3,
-    figsize=(20, 6),
-    sharex=True,
-    sharey=True
-)
-
-# Panel 1: Model I
-axes[0].scatter(
-    df_model_i[NF_COL],
-    df_model_i[GAIN_COL],
-    s=8,
-    alpha=0.30,
-    edgecolors="none"
-)
-axes[0].scatter(
-    DESIRED_NF_DB,
-    DESIRED_GAIN_DB,
-    s=180,
-    marker="*",
-    edgecolors="black",
-    zorder=10
-)
-axes[0].set_title(f"Model I Dataset\nn={len(df_model_i):,}")
-axes[0].set_xlabel("NF (dB)")
-axes[0].set_ylabel("Maximum gain (dB)")
-axes[0].grid(True, linestyle=":", alpha=0.6)
-
-# Panel 2: Model II
-axes[1].scatter(
-    df_model_ii[NF_COL],
-    df_model_ii[GAIN_COL],
-    s=8,
-    alpha=0.30,
-    edgecolors="none"
-)
-axes[1].scatter(
-    DESIRED_NF_DB,
-    DESIRED_GAIN_DB,
-    s=180,
-    marker="*",
-    edgecolors="black",
-    zorder=10
-)
-axes[1].set_title(f"Model II Dataset\nn={len(df_model_ii):,}")
-axes[1].set_xlabel("NF (dB)")
-axes[1].grid(True, linestyle=":", alpha=0.6)
-
-
-# Panel 3: Overlay
-axes[2].scatter(
-    df_model_i[NF_COL],
-    df_model_i[GAIN_COL],
-    s=8,
-    alpha=0.25,
-    marker="o",
-    edgecolors="none",
-    label="Model I"
-)
-axes[2].scatter(
-    df_model_ii[NF_COL],
-    df_model_ii[GAIN_COL],
-    s=8,
-    alpha=0.25,
-    marker="^",
-    edgecolors="none",
-    label="Model II"
-)
-axes[2].scatter(
-    DESIRED_NF_DB,
-    DESIRED_GAIN_DB,
-    s=180,
-    marker="*",
-    edgecolors="black",
-    label="Desired target",
-    zorder=10
-)
-axes[2].set_title("Model I and Model II Overlay")
-axes[2].set_xlabel("NF (dB)")
-axes[2].grid(True, linestyle=":", alpha=0.6)
-axes[2].legend()
-
-
-fig.suptitle("Comparison of Model I and Model II Performance Spaces", fontsize=16)
-plt.tight_layout()
-
-
-detailed_comparison_path = PNG_FOLDER / "model_i_vs_model_ii_detailed_NF_gain_comparison.png"
-
-
-plt.savefig(detailed_comparison_path, dpi=300, bbox_inches="tight")
-
-
-save_figure_mat(
-    detailed_comparison_path,
-    model_i_NF_dB=df_model_i[NF_COL],
-    model_i_max_gain_dB=df_model_i[GAIN_COL],
-    model_ii_NF_dB=df_model_ii[NF_COL],
-    model_ii_max_gain_dB=df_model_ii[GAIN_COL],
-    desired_NF_dB=DESIRED_NF_DB,
-    desired_max_gain_dB=DESIRED_GAIN_DB
-)
+# print("\n--- Creating detailed Model I-Model II comparison figure ---")
+
+
+# fig, axes = plt.subplots(
+#     nrows=1,
+#     ncols=3,
+#     figsize=(20, 6),
+#     sharex=True,
+#     sharey=True
+# )
+
+# # Panel 1: Model I
+# axes[0].scatter(
+#     df_model_i[NF_COL],
+#     df_model_i[GAIN_COL],
+#     s=8,
+#     alpha=0.30,
+#     edgecolors="none"
+# )
+# axes[0].scatter(
+#     DESIRED_NF_DB,
+#     DESIRED_GAIN_DB,
+#     s=180,
+#     marker="*",
+#     edgecolors="black",
+#     zorder=10
+# )
+# axes[0].set_title(f"Model I Dataset\nn={len(df_model_i):,}")
+# axes[0].set_xlabel("NF (dB)")
+# axes[0].set_ylabel("Maximum gain (dB)")
+# axes[0].grid(True, linestyle=":", alpha=0.6)
+
+# # Panel 2: Model II
+# axes[1].scatter(
+#     df_model_ii[NF_COL],
+#     df_model_ii[GAIN_COL],
+#     s=8,
+#     alpha=0.30,
+#     edgecolors="none"
+# )
+# axes[1].scatter(
+#     DESIRED_NF_DB,
+#     DESIRED_GAIN_DB,
+#     s=180,
+#     marker="*",
+#     edgecolors="black",
+#     zorder=10
+# )
+# axes[1].set_title(f"Model II Dataset\nn={len(df_model_ii):,}")
+# axes[1].set_xlabel("NF (dB)")
+# axes[1].grid(True, linestyle=":", alpha=0.6)
+
+
+# # Panel 3: Overlay
+# axes[2].scatter(
+#     df_model_i[NF_COL],
+#     df_model_i[GAIN_COL],
+#     s=8,
+#     alpha=0.25,
+#     marker="o",
+#     edgecolors="none",
+#     label="Model I"
+# )
+# axes[2].scatter(
+#     df_model_ii[NF_COL],
+#     df_model_ii[GAIN_COL],
+#     s=8,
+#     alpha=0.25,
+#     marker="^",
+#     edgecolors="none",
+#     label="Model II"
+# )
+# axes[2].scatter(
+#     DESIRED_NF_DB,
+#     DESIRED_GAIN_DB,
+#     s=180,
+#     marker="*",
+#     edgecolors="black",
+#     label="Desired target",
+#     zorder=10
+# )
+# axes[2].set_title("Model I and Model II Overlay")
+# axes[2].set_xlabel("NF (dB)")
+# axes[2].grid(True, linestyle=":", alpha=0.6)
+# axes[2].legend()
+
+
+# fig.suptitle("Comparison of Model I and Model II Performance Spaces", fontsize=16)
+# plt.tight_layout()
+
+
+# detailed_comparison_path = PNG_FOLDER / "model_i_vs_model_ii_detailed_NF_gain_comparison.png"
+
+
+# plt.savefig(detailed_comparison_path, dpi=300, bbox_inches="tight")
+
+
+# save_figure_mat(
+#     detailed_comparison_path,
+#     model_i_NF_dB=df_model_i[NF_COL],
+#     model_i_max_gain_dB=df_model_i[GAIN_COL],
+#     model_ii_NF_dB=df_model_ii[NF_COL],
+#     model_ii_max_gain_dB=df_model_ii[GAIN_COL],
+#     desired_NF_dB=DESIRED_NF_DB,
+#     desired_max_gain_dB=DESIRED_GAIN_DB
+# )
 
 
-plt.show()
-print(f"Detailed comparison figure saved to: {detailed_comparison_path}")
+# plt.show()
+# print(f"Detailed comparison figure saved to: {detailed_comparison_path}")
 
 
-# ------------------------------------------------------------
-# ------------------------------------------------------------
-if SAVE_INDIVIDUAL_COMPARISON_PANELS:
+# # ------------------------------------------------------------
+# # ------------------------------------------------------------
+# if SAVE_INDIVIDUAL_COMPARISON_PANELS:
 
 
-    # Model I only
-    fig_model_i, ax_model_i = plt.subplots(figsize=(8, 6))
+#     # Model I only
+#     fig_model_i, ax_model_i = plt.subplots(figsize=(8, 6))
 
 
-    ax_model_i.scatter(
-        df_model_i[NF_COL],
-        df_model_i[GAIN_COL],
-        s=8,
-        alpha=0.30,
-        edgecolors="none"
-    )
+#     ax_model_i.scatter(
+#         df_model_i[NF_COL],
+#         df_model_i[GAIN_COL],
+#         s=8,
+#         alpha=0.30,
+#         edgecolors="none"
+#     )
 
 
-    ax_model_i.scatter(
-        DESIRED_NF_DB,
-        DESIRED_GAIN_DB,
-        s=180,
-        marker="*",
-        edgecolors="black",
-        label="Desired target",
-        zorder=10
-    )
+#     ax_model_i.scatter(
+#         DESIRED_NF_DB,
+#         DESIRED_GAIN_DB,
+#         s=180,
+#         marker="*",
+#         edgecolors="black",
+#         label="Desired target",
+#         zorder=10
+#     )
 
 
-    ax_model_i.set_xlabel("NF (dB)")
-    ax_model_i.set_ylabel("Maximum gain (dB)")
-    ax_model_i.set_title(f"Model I Dataset, n={len(df_model_i):,}")
-    ax_model_i.grid(True, linestyle=":", alpha=0.6)
-    ax_model_i.legend()
-    fig_model_i.tight_layout()
+#     ax_model_i.set_xlabel("NF (dB)")
+#     ax_model_i.set_ylabel("Maximum gain (dB)")
+#     ax_model_i.set_title(f"Model I Dataset, n={len(df_model_i):,}")
+#     ax_model_i.grid(True, linestyle=":", alpha=0.6)
+#     ax_model_i.legend()
+#     fig_model_i.tight_layout()
 
 
-    model_i_only_path = PNG_FOLDER / "model_i_NF_gain_performance_space.png"
+#     model_i_only_path = PNG_FOLDER / "model_i_NF_gain_performance_space.png"
 
 
-    fig_model_i.savefig(
-        model_i_only_path,
-        dpi=300,
-        bbox_inches="tight"
-    )
+#     fig_model_i.savefig(
+#         model_i_only_path,
+#         dpi=300,
+#         bbox_inches="tight"
+#     )
 
 
-    save_figure_mat(
-        model_i_only_path,
-        model_i_NF_dB=df_model_i[NF_COL],
-        model_i_max_gain_dB=df_model_i[GAIN_COL],
-        desired_NF_dB=DESIRED_NF_DB,
-        desired_max_gain_dB=DESIRED_GAIN_DB
-    )
+#     save_figure_mat(
+#         model_i_only_path,
+#         model_i_NF_dB=df_model_i[NF_COL],
+#         model_i_max_gain_dB=df_model_i[GAIN_COL],
+#         desired_NF_dB=DESIRED_NF_DB,
+#         desired_max_gain_dB=DESIRED_GAIN_DB
+#     )
 
 
-    plt.show()
+#     plt.show()
 
 
-    # Model II only
-    fig_model_ii, ax_model_ii = plt.subplots(figsize=(8, 6))
+#     # Model II only
+#     fig_model_ii, ax_model_ii = plt.subplots(figsize=(8, 6))
 
 
-    ax_model_ii.scatter(
-        df_model_ii[NF_COL],
-        df_model_ii[GAIN_COL],
-        s=8,
-        alpha=0.30,
-        edgecolors="none"
-    )
+#     ax_model_ii.scatter(
+#         df_model_ii[NF_COL],
+#         df_model_ii[GAIN_COL],
+#         s=8,
+#         alpha=0.30,
+#         edgecolors="none"
+#     )
 
 
-    ax_model_ii.scatter(
-        DESIRED_NF_DB,
-        DESIRED_GAIN_DB,
-        s=180,
-        marker="*",
-        edgecolors="black",
-        label="Desired target",
-        zorder=10
-    )
+#     ax_model_ii.scatter(
+#         DESIRED_NF_DB,
+#         DESIRED_GAIN_DB,
+#         s=180,
+#         marker="*",
+#         edgecolors="black",
+#         label="Desired target",
+#         zorder=10
+#     )
 
 
-    ax_model_ii.set_xlabel("NF (dB)")
-    ax_model_ii.set_ylabel("Maximum gain (dB)")
-    ax_model_ii.set_title(f"Model II Dataset, n={len(df_model_ii):,}")
-    ax_model_ii.grid(True, linestyle=":", alpha=0.6)
-    ax_model_ii.legend()
-    fig_model_ii.tight_layout()
+#     ax_model_ii.set_xlabel("NF (dB)")
+#     ax_model_ii.set_ylabel("Maximum gain (dB)")
+#     ax_model_ii.set_title(f"Model II Dataset, n={len(df_model_ii):,}")
+#     ax_model_ii.grid(True, linestyle=":", alpha=0.6)
+#     ax_model_ii.legend()
+#     fig_model_ii.tight_layout()
 
 
-    model_ii_only_path = PNG_FOLDER / "model_ii_NF_gain_performance_space.png"
+#     model_ii_only_path = PNG_FOLDER / "model_ii_NF_gain_performance_space.png"
 
 
-    fig_model_ii.savefig(
-        model_ii_only_path,
-        dpi=300,
-        bbox_inches="tight"
-    )
+#     fig_model_ii.savefig(
+#         model_ii_only_path,
+#         dpi=300,
+#         bbox_inches="tight"
+#     )
 
 
-    save_figure_mat(
-        model_ii_only_path,
-        model_ii_NF_dB=df_model_ii[NF_COL],
-        model_ii_max_gain_dB=df_model_ii[GAIN_COL],
-        desired_NF_dB=DESIRED_NF_DB,
-        desired_max_gain_dB=DESIRED_GAIN_DB
-    )
+#     save_figure_mat(
+#         model_ii_only_path,
+#         model_ii_NF_dB=df_model_ii[NF_COL],
+#         model_ii_max_gain_dB=df_model_ii[GAIN_COL],
+#         desired_NF_dB=DESIRED_NF_DB,
+#         desired_max_gain_dB=DESIRED_GAIN_DB
+#     )
 
 
-    plt.show()
+#     plt.show()
 
 
-    # Overlay only
-    fig_overlay, ax_overlay = plt.subplots(figsize=(9, 7))
+#     # Overlay only
+#     fig_overlay, ax_overlay = plt.subplots(figsize=(9, 7))
 
 
-    ax_overlay.scatter(
-        df_model_i[NF_COL],
-        df_model_i[GAIN_COL],
-        s=8,
-        alpha=0.25,
-        marker="o",
-        edgecolors="none",
-        label="Model I"
-    )
+#     ax_overlay.scatter(
+#         df_model_i[NF_COL],
+#         df_model_i[GAIN_COL],
+#         s=8,
+#         alpha=0.25,
+#         marker="o",
+#         edgecolors="none",
+#         label="Model I"
+#     )
 
 
-    ax_overlay.scatter(
-        df_model_ii[NF_COL],
-        df_model_ii[GAIN_COL],
-        s=8,
-        alpha=0.25,
-        marker="^",
-        edgecolors="none",
-        label="Model II"
-    )
+#     ax_overlay.scatter(
+#         df_model_ii[NF_COL],
+#         df_model_ii[GAIN_COL],
+#         s=8,
+#         alpha=0.25,
+#         marker="^",
+#         edgecolors="none",
+#         label="Model II"
+#     )
 
 
-    ax_overlay.scatter(
-        DESIRED_NF_DB,
-        DESIRED_GAIN_DB,
-        s=180,
-        marker="*",
-        edgecolors="black",
-        label="Desired target",
-        zorder=10
-    )
+#     ax_overlay.scatter(
+#         DESIRED_NF_DB,
+#         DESIRED_GAIN_DB,
+#         s=180,
+#         marker="*",
+#         edgecolors="black",
+#         label="Desired target",
+#         zorder=10
+#     )
 
 
-    ax_overlay.set_xlabel("NF (dB)")
-    ax_overlay.set_ylabel("Maximum gain (dB)")
-    ax_overlay.set_title("Model I and Model II Overlay")
-    ax_overlay.grid(True, linestyle=":", alpha=0.6)
-    ax_overlay.legend()
-    fig_overlay.tight_layout()
+#     ax_overlay.set_xlabel("NF (dB)")
+#     ax_overlay.set_ylabel("Maximum gain (dB)")
+#     ax_overlay.set_title("Model I and Model II Overlay")
+#     ax_overlay.grid(True, linestyle=":", alpha=0.6)
+#     ax_overlay.legend()
+#     fig_overlay.tight_layout()
 
 
-    overlay_only_path = PNG_FOLDER / "model_i_vs_model_ii_overlay_only.png"
+#     overlay_only_path = PNG_FOLDER / "model_i_vs_model_ii_overlay_only.png"
 
 
-    fig_overlay.savefig(
-        overlay_only_path,
-        dpi=300,
-        bbox_inches="tight"
-    )
+#     fig_overlay.savefig(
+#         overlay_only_path,
+#         dpi=300,
+#         bbox_inches="tight"
+#     )
 
 
-    save_figure_mat(
-        overlay_only_path,
-        model_i_NF_dB=df_model_i[NF_COL],
-        model_i_max_gain_dB=df_model_i[GAIN_COL],
-        model_ii_NF_dB=df_model_ii[NF_COL],
-        model_ii_max_gain_dB=df_model_ii[GAIN_COL],
-        desired_NF_dB=DESIRED_NF_DB,
-        desired_max_gain_dB=DESIRED_GAIN_DB
-    )
+#     save_figure_mat(
+#         overlay_only_path,
+#         model_i_NF_dB=df_model_i[NF_COL],
+#         model_i_max_gain_dB=df_model_i[GAIN_COL],
+#         model_ii_NF_dB=df_model_ii[NF_COL],
+#         model_ii_max_gain_dB=df_model_ii[GAIN_COL],
+#         desired_NF_dB=DESIRED_NF_DB,
+#         desired_max_gain_dB=DESIRED_GAIN_DB
+#     )
 
 
-    plt.show()
+#     plt.show()
 
 
 
 
-# Save combined dataset
-df_both_datasets = pd.concat([df_model_i, df_model_ii], axis=0, ignore_index=True)
-df_both_datasets.to_csv(
-    CSV_FOLDER / "combined_model_i_model_ii_dataset.csv",
-    index=False
-)
+# # Save combined dataset
+# df_both_datasets = pd.concat([df_model_i, df_model_ii], axis=0, ignore_index=True)
+# df_both_datasets.to_csv(
+#     CSV_FOLDER / "combined_model_i_model_ii_dataset.csv",
+#     index=False
+# )
 
-# ============================================================
-# 3. Check if desired target is inside data range
-# ============================================================
+# # ============================================================
+# # 3. Check if desired target is inside data range
+# # ============================================================
 
-print("\n--- Target feasibility check ---")
+# print("\n--- Target feasibility check ---")
 
-nf_min = df_model[NF_COL].min()
-nf_max = df_model[NF_COL].max()
-gain_min = df_model[GAIN_COL].min()
-gain_max = df_model[GAIN_COL].max()
+# nf_min = df_model[NF_COL].min()
+# nf_max = df_model[NF_COL].max()
+# gain_min = df_model[GAIN_COL].min()
+# gain_max = df_model[GAIN_COL].max()
 
 
-print(f"NF range   : {nf_min:.6f} to {nf_max:.6f}")
-print(f"Gain range : {gain_min:.6f} to {gain_max:.6f}")
+# print(f"NF range   : {nf_min:.6f} to {nf_max:.6f}")
+# print(f"Gain range : {gain_min:.6f} to {gain_max:.6f}")
 
 
-inside_nf = nf_min <= DESIRED_NF_DB <= nf_max
-inside_gain = gain_min <= DESIRED_GAIN_DB <= gain_max
+# inside_nf = nf_min <= DESIRED_NF_DB <= nf_max
+# inside_gain = gain_min <= DESIRED_GAIN_DB <= gain_max
 
 
-if inside_nf and inside_gain:
-    print("Desired target is inside both marginal data ranges (not a guarantee of feasibility).")
-else:
-    print("WARNING: Desired target is outside the available marginal data ranges.")
-    print("The code will still recommend the closest available KMeans region.")
+# if inside_nf and inside_gain:
+#     print("Desired target is inside both marginal data ranges (not a guarantee of feasibility).")
+# else:
+#     print("WARNING: Desired target is outside the available marginal data ranges.")
+#     print("The code will still recommend the closest available KMeans region.")
 
 
 # ============================================================
@@ -1381,8 +1381,8 @@ save_figure_mat(
     local_pump_signal_sep_nm=local_candidates["pump_signal_sep_nm"],
     all_pump_power_dBm=df_model["pump_power_dBm"],
     local_pump_power_dBm=local_candidates["pump_power_dBm"],
-    all_beta2_ps2_per_km=df_model["beta2_ps2_per_km"],
-    local_beta2_ps2_per_km=local_candidates["beta2_ps2_per_km"],
+    all_Dcc_ps=df_model["Dcc_ps"],
+    local_Dcc_ps=local_candidates["Dcc_ps"],
     all_zero_disp_wavelength_nm=df_model["zero_disp_wavelength_nm"],
     local_zero_disp_wavelength_nm=local_candidates["zero_disp_wavelength_nm"]
 )
@@ -1470,7 +1470,7 @@ save_figure_mat(
     pairwise_input_path,
     pump_signal_sep_nm=local_candidates["pump_signal_sep_nm"],
     pump_power_dBm=local_candidates["pump_power_dBm"],
-    beta2_ps2_per_km=local_candidates["beta2_ps2_per_km"],
+    Dcc_ps=local_candidates["Dcc_ps"],
     zero_disp_wavelength_nm=local_candidates["zero_disp_wavelength_nm"],
     local_candidate_NF_dB=local_candidates[NF_COL],
     local_candidate_max_gain_dB=local_candidates[GAIN_COL],

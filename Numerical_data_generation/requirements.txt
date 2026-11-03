@@ -1,7 +1,5 @@
-# This repository contains MATLAB code and has no Python package dependencies.
-#
-# Recommended:
-#   MATLAB R2020a or newer
-#
-# The supplied source uses base-MATLAB functionality such as ode45, fft/ifft,
-# tables, tiledlayout, exportgraphics, savefig, and MAT-file I/O.
+# Numerical arrays and random sampling
+numpy>=1.26,<3.0
+
+# JIT compilation and parallel CPU simulations
+numba>=0.61,<1.0

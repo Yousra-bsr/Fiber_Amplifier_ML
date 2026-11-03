@@ -10,7 +10,7 @@ Targets
 The script:
 - loads a training CSV;
 - preprocesses and scales four input features and two targets;
-- Applies an ASINH transform to the targets;
+- Optionally applies an ASINH transform to the targets;
 - trains a configurable fully connected PyTorch MLP;
 - saves the best checkpoint;
 - evaluates a validation split;
@@ -52,15 +52,15 @@ from sklearn.metrics import (
 # ------------------------------------------------------------
 print("--- 0. Configuration ---")
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_PATH = PROJECT_ROOT / "data" / "dataset_200000.csv"
-NEW_DATA_PATH = PROJECT_ROOT / "data" / "dataset_ext_20000.csv"
+DATA_PATH = PROJECT_ROOT / "data" / "dataset_300000.csv"  # training/validation dat
+NEW_DATA_PATH = PROJECT_ROOT / "data" / "dataset_50000.csv"   # external test on unseed data
 
 INPUT_COLS = [
     "pump_signal_sep_nm",
     "pump_power_dBm",
-    "beta2_ps2_per_km",
+    "Dcc_ps",
     "zero_disp_wavelength_nm"
 ]
 
@@ -75,25 +75,27 @@ OUTPUT_SIZE = len(TARGET_COLS)
 # ------------------------------------------------------------
 # Best hyperparameters found by Ray Tune Optimization
 # ------------------------------------------------------------
-HIDDEN_SIZES = [512, 512, 512, 256]
+
+HIDDEN_SIZES = [512, 512, 256, 256, 256, 128]   
 
 DROP_OUT_RATE = 0.0
 
-LEARNING_RATE = 0.001
-BATCH_SIZE = 128
+LEARNING_RATE = 0.00011 
+BATCH_SIZE = 128         # 128
 EPOCHS        = 500
 VALIDATION_SPLIT = 0.2
 RANDOM_SEED      = 42
-WEIGHT_DECAY = 1e-5
+WEIGHT_DECAY = 1.78e-06    # 1e-5
 EARLY_STOPPING_PATIENCE = 60
 NUM_SAMPLES_TO_SHOW     = 5
 
 Y_SCALER_TYPE   = "standard"
 
-USE_ASINH_TARGET = True
+USE_ASINH_TARGET = False      # The Asinh Transformation is not used when USE_ASINH_TARGET = False
 
-NF_ASINH_SCALE = 0.002
-GAIN_ASINH_SCALE = 0.5
+NF_ASINH_SCALE = 0.002        # Applied to NF only when USE_ASINH_TARGET = True
+GAIN_ASINH_SCALE = 0.5        # Applied to Gmax only when USE_ASINH_TARGET = True
+
 
 ASINH_SCALES     = np.array(
     [NF_ASINH_SCALE, GAIN_ASINH_SCALE],
@@ -272,7 +274,7 @@ missing_cols = [col for col in required_cols if col not in df.columns]
 if missing_cols:
     print("*** ERROR: Missing required columns ***")
     print(missing_cols)
-    raise
+    raise ValueError(f"Missing required columns: {missing_cols}")
 
 df_model = df[required_cols].copy()
 

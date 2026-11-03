@@ -1,6 +1,6 @@
 """Fast inference for fiber-amplifier NF and gain : ready-to-use prediction function
 
-This module loads the checkpoint once per model and applies the *saved*
+This module loads the checkpoint of the DNN model and applies the *saved*
 training preprocessing and inverse output transformations.
 """
 from __future__ import annotations
@@ -15,10 +15,10 @@ from torch import nn
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_FILES = {
     "I": BASE_DIR / "checkpoints" / "best_model_NF_and_gain_model_I.pth",
-    "II": BASE_DIR / "checkpoints" / "best_model_NF_and_gain_model_II.pth",
+   # "I": BASE_DIR / "checkpoints" / "best_model_NF_and_gain_model_I.pth",
 }
 INPUT_COLS = (
-    "pump_signal_sep_nm", "pump_power_dBm", "beta2_ps2_per_km",
+    "pump_signal_sep_nm", "pump_power_dBm", "Dcc_ps",
     "zero_disp_wavelength_nm",
 )
 TARGET_COLS = ("NF_dB", "max_gain_dB")
@@ -26,9 +26,9 @@ TARGET_COLS = ("NF_dB", "max_gain_dB")
 # Input domain used to generate the training datasets for BOTH models.
 # Bounds are inclusive, and values use the physical units shown below.
 INPUT_RANGES = {
-    "pump_signal_sep_nm": (4.0, 16.0, "nm"),
+    "pump_signal_sep_nm": (2.0, 25.0, "nm"),
     "pump_power_dBm": (19.0, 25.0, "dBm"),
-    "beta2_ps2_per_km": (-10.0, -0.1, "ps²/km"),
+    "Dcc_ps": (0.01, 0.07, "ps/(nm^2 km)"),
     "zero_disp_wavelength_nm": (1500.0, 1600.0, "nm"),
 }
 
@@ -109,7 +109,7 @@ def _load_model(model_name: str):
 def predict_nf_gain(
     pump_signal_sep_nm: float,
     pump_power_dBm: float,
-    beta2_ps2_per_km: float,
+    Dcc_ps: float,
     zero_disp_wavelength_nm: float,
     model: str = "II",
 ) -> tuple[float, float]:
@@ -126,7 +126,7 @@ def predict_nf_gain(
     if model_name not in MODEL_FILES:
         raise ValueError("model must be 'I' or 'II'")
     values = np.asarray([[pump_signal_sep_nm, pump_power_dBm,
-                          beta2_ps2_per_km, zero_disp_wavelength_nm]], dtype=np.float32)
+                          Dcc_ps, zero_disp_wavelength_nm]], dtype=np.float32)
     validate_inputs(values)
 
     network, ckpt = _load_model(model_name)
@@ -158,7 +158,7 @@ def predict_nf_gain(
 if __name__ == "__main__":
     for name in MODEL_FILES:
     
-        nf, gain = predict_nf_gain(5, 25, -0.1, 1520.0, model=name) 
+        nf, gain = predict_nf_gain(5, 25, 0.02, 1555.0, model=name) 
         #                        ( "pump_signal_sep_nm", "pump_power_dBm",
-        #                          "beta2_ps2_per_km", "zero_disp_wavelength_nm")
+        #                          "Dcc_ps", "zero_disp_wavelength_nm")
         print(f"Model {name}: NF = {nf:.6f} dB, maximum gain = {gain:.6f} dB")

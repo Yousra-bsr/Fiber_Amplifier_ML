@@ -1,13 +1,13 @@
 # KMeans Performance-Region Clustering for Inverse Design
 
-This code uses **KMeans clustering** to explore inverse design in the two-dimensional performance space defined by noise figure (`NF_dB`) and maximum gain (`max_gain_dB`). It compares the datasets generated using **Model I** and **Model II**, then clusters model II dataset to identify existing parameter combinations near a desired NF/gain target.
+This code uses **KMeans clustering** to explore inverse design in the two-dimensional performance space defined by noise figure (`NF_dB`) and maximum gain (`max_gain_dB`). It clusters our model dataset to identify existing parameter combinations near a desired NF/gain target.
 
 The method recommends **candidate input-parameter ranges based on nearby samples in the dataset**. 
 
 ## Workflow
 
-1. Load and clean the Model I and Model II datasets and compare their NF/gain performance spaces.
-2. Select **Model I** or **Model II** for KMeans analysis.
+1. Load and clean the dataset. Optionally, compare two different datasets (this section is commented out in the code; uncomment it if needed).
+2. Use KMeans analysis.
 3. Standardize `NF_dB` and `max_gain_dB` using `StandardScaler` fitted on the selected dataset.
 4. Evaluate candidate cluster counts using the elbow method (inertia) and silhouette scores.
 5. Fit the final KMeans model on the complete selected dataset and identify the region containing the desired target.
@@ -22,8 +22,8 @@ The code expects this directory layout:
 ```text
 GithubProject/
 ├── data/
-│   ├── dataset_200000.csv            # Model I
-│   └── dataset_nlse_300000.csv       # Model II
+│   ├── dataset_300000.csv            
+│   └── dataset_50000.csv       
 └── Clustering/
     ├── README.md
     ├── src/
@@ -36,7 +36,7 @@ The input CSV files must contain:
 | --- | --- |
 | `pump_signal_sep_nm` | `NF_dB` |
 | `pump_power_dBm` | `max_gain_dB` |
-| `beta2_ps2_per_km` | |
+| `Dcc_ps` | |
 | `zero_disp_wavelength_nm` | |
 
 Rows containing missing or infinite values are removed, and negative `max_gain_dB` values are clipped to zero, as implemented in the script.
@@ -47,19 +47,20 @@ Edit the configuration section near the beginning of `src/kmeans_inverse_design.
 
 | Setting | Default |
 | --- | --- |
-| `CLUSTERING_DATASET` | `"model-ii"` |
-| `N_CLUSTERS` | `3` |
-| `CLUSTER_RANGE` | `range(2, 6)` (k = 2, 3, 4, 5) |
+| `CLUSTERING_DATASET` | `"model-i"` |
+| `N_CLUSTERS` | `2` |
+| `CLUSTER_RANGE` | `range(2, 8)` (k = 2, 3, 4, 5, 6, 7) |
 | `RANDOM_SEED` | `42` |
-| `SILHOUETTE_SAMPLE_SIZE` | `20000` |
-| `DESIRED_NF_DB` | `1.7` dB |
-| `DESIRED_GAIN_DB` | `9.0` dB |
+| `SILHOUETTE_SAMPLE_SIZE` | `30000` |
+| `DESIRED_NF_DB` | `0.3` dB |
+| `DESIRED_GAIN_DB` | `20.0` dB |
 | `N_LOCAL_CANDIDATES` | `500` |
 | `NUM_CLOSEST_SAMPLES` | `10` |
 | `LOCAL_QUANTILE_LOW`, `LOCAL_QUANTILE_HIGH` | `0.10`, `0.90` |
 | `SAVE_INDIVIDUAL_COMPARISON_PANELS` | `True` |
 
-Set `CLUSTERING_DATASET = "model-i"` to cluster Model I instead. Both datasets are still loaded for comparison. Set `SILHOUETTE_SAMPLE_SIZE = None` to score all samples; this may require substantially more time and memory.
+Set `CLUSTERING_DATASET = "model-i"` to cluster Model I. 
+Set `SILHOUETTE_SAMPLE_SIZE = None` to score all samples; this may require substantially more time and memory.
 
 **Silhouette diagnostics:** Each KMeans model is fitted on the complete selected dataset (`n_init=10`). Its silhouette score is evaluated on the same fixed random subset of up to 20,000 samples for all tested `k` values. The silhouette scores are therefore subset estimates, whereas inertia is computed from the full fit.
 

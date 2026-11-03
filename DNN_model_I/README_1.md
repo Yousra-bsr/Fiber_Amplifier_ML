@@ -24,13 +24,13 @@ The active configuration in `src/DNN_model_I.py` is:
 | --- | --- |
 | Input features | 4 |
 | Targets | 2 |
-| Hidden layers | `[512, 512, 512, 256]` |
+| Hidden layers | `[512, 512, 256, 256, 256, 128]` |
 | Hidden-layer count | 4 |
 | Activation | LeakyReLU (`0.01`) |
 | Dropout | `0.0` |
 | Optimizer | AdamW |
-| Learning rate | `0.001` |
-| Weight decay | `1e-5` |
+| Learning rate | `0.00011` |
+| Weight decay | `1.78e-06` |
 | Batch size | `128` |
 | Maximum epochs | `500` |
 | Validation split | `0.2` |
@@ -39,8 +39,7 @@ The active configuration in `src/DNN_model_I.py` is:
 | LR scheduler | CosineAnnealingLR |
 | Minimum learning rate | `1e-6` |
 | Target scaler | StandardScaler |
-| NF ASINH scale | `0.002` |
-| Gain ASINH scale | `0.5` |
+| USE_ASINH_TARGET | `False` |
 
 The MLP implementation is dynamic: changing `HIDDEN_SIZES` changes the number
 and size of the hidden layers without rewriting the model class.
@@ -51,8 +50,8 @@ Place the CSV files in the `Data/` directory:
 
 ```text
 Data/
-├── dataset_200000.csv
-└── dataset_ext_20000.csv
+├── dataset_300000.csv
+└── dataset_50000.csv
 ```
 
 The first file is used for training and validation. The second is used as an external test dataset.
@@ -62,7 +61,7 @@ The first file is used for training and validation. The second is used as an ext
 ```text
 pump_signal_sep_nm
 pump_power_dBm
-beta2_ps2_per_km
+Dcc_ps
 zero_disp_wavelength_nm
 ```
 
@@ -90,7 +89,7 @@ also enforces non-negative values for `max_gain_dB` before training/evaluation.
 When the script runs, it creates an `outputs/` directory automatically:
 
 ```text
-outputs/
+Outputs_model_I/
 ├── checkpoints/
 ├── figures/
 │   ├── pdf/
@@ -149,7 +148,7 @@ The workflow:
 3. enforces non-negative `max_gain_dB`;
 4. creates a reproducible train/validation split;
 5. standardizes the four input features;
-6. applies the column-wise ASINH target transform;
+6. optionally applies the column-wise ASINH target transform;
 7. standardizes the transformed targets.
 
 The target transform is

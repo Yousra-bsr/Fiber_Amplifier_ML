@@ -4,7 +4,7 @@ two-target PyTorch MLP, with GPU-oriented execution options.
 
 This script performs hyperparameter optimization only. It DOES NOT train a separate
 final DNN after Ray Tune finishes. The best hyperparameters are saved for use by
- another DNN training script (DNN_model_I and DNN_model_II).
+ another DNN training script (DNN_model_I).
 
 Important: Ray Tune trials still train temporary candidate networks. This is
 required so Optuna can compare configurations and ASHA can stop weak trials.
@@ -21,11 +21,9 @@ required so Optuna can compare configurations and ASHA can stop weak trials.
 #   - Training/validation tensors are copied to the assigned GPU once per
 #     trial; no DataLoader CPU->GPU copy occurs inside the epoch loop.
 #   - Validation is evaluated in one GPU-resident pass.
-#   - Per-batch .item() synchronizations are removed.
-#   - BF16 autocast is enabled by default on CUDA.
-#   - Fused AdamW is used when supported by the installed PyTorch build.
-#   - TF32 / high-precision TensorFloat matrix paths are enabled.
-#   - Target transforms/scalers are precomputed once for the discrete search
+#   - Target preprocessing is configurable: StandardScaler only (default),
+#     or ASINH + StandardScaler with jointly tuned NF and gain scales.
+#   - Target transforms/scalers are precomputed once for the active search
 #     space and shared with Ray workers through the object store.
 #   
 #
@@ -33,7 +31,7 @@ required so Optuna can compare configurations and ASHA can stop weak trials.
 #   TRIALS_PER_GPU=4          # try 2, 4, then 8 on B300
 #   BATCH_CHOICES= 64,128,256
 #   USE_BF16=1
-#   TUNE_COMPILE=0            # compile cost can hurt short ASHA trials
+#   TUNE_COMPILE=0            
 #   CPUS_PER_TRIAL=2
 #   SYSTEM_RESERVED_CPUS=4
 #   BASE_DIR=/workspace/labs
@@ -111,16 +109,13 @@ else:
     DATA_DIR = PROJECT_ROOT / "data"
 
 # Dataset used for the hyperparameter search.
-# Model II:
+# Model I:
 
 RAYTUNE_DIR = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = RAYTUNE_DIR / "outputs"
-DATA_PATH = DATA_DIR / "dataset_nlse_300000.csv"
+DATA_PATH = DATA_DIR / "dataset_300000.csv"
 
-# Model I :
-#RAYTUNE_DIR = Path(__file__).resolve().parents[2]
-#OUTPUT_DIR = RAYTUNE_DIR / "outputs"
-#DATA_PATH = DATA_DIR / "dataset_200000.csv"
+
 
 RAY_STORAGE_PATH = Path(
     os.environ.get("RAY_STORAGE_PATH", str(OUTPUT_DIR / "ray_results"))
@@ -142,7 +137,7 @@ for directory in (OUTPUT_DIR, RAY_STORAGE_PATH, SEARCH_OUTPUT_DIR):
 INPUT_COLS = [
     "pump_signal_sep_nm",
     "pump_power_dBm",
-    "beta2_ps2_per_km",
+    "Dcc_ps",
     "zero_disp_wavelength_nm",
 ]
 
@@ -172,8 +167,15 @@ TUNE_EPOCHS = int(os.environ.get("TUNE_EPOCHS", "500"))
 TUNE_EARLY_STOPPING_PATIENCE = int(
     os.environ.get("TUNE_EARLY_STOPPING_PATIENCE", "80")
 )
-NUM_TRIALS = int(os.environ.get("NUM_TRIALS", "200"))
+NUM_TRIALS = int(os.environ.get("NUM_TRIALS", "100"))
 
+
+# Set to False: train on raw NF/gain in dB after StandardScaler only.
+# Set to True : apply ASINH first, then StandardScaler, and let Ray Tune
+#               optimize both ASINH scale factors along with the MLP settings.
+USE_ASINH_TARGET = False
+
+# Used ONLY when USE_ASINH_TARGET = True.
 NF_ASINH_CHOICES = [2e-4, 5e-4, 1e-3, 2e-3]
 GAIN_ASINH_CHOICES = [0.05, 0.1, 0.2, 0.5]
 
@@ -312,6 +314,12 @@ def print_resource_summary() -> None:
     print(f"Fused AdamW                : {USE_FUSED_ADAMW and TUNE_USE_GPU}")
     print(f"Tune torch.compile         : {TUNE_COMPILE}")
     print(f"Batch choices              : {BATCH_CHOICES}")
+    print(f"Use ASINH targets          : {USE_ASINH_TARGET}")
+    if USE_ASINH_TARGET:
+        print(f"NF ASINH scale choices     : {NF_ASINH_CHOICES}")
+        print(f"Gain ASINH scale choices   : {GAIN_ASINH_CHOICES}")
+    else:
+        print("Target preprocessing       : StandardScaler only")
     print(f"Ray storage path           : {RAY_STORAGE_PATH}")
     print(f"Search summary directory   : {SEARCH_OUTPUT_DIR}")
 
@@ -332,8 +340,14 @@ def make_asinh_scales(
 
 
 
-def transform_targets(y_np: np.ndarray, scales: np.ndarray) -> np.ndarray:
+def transform_targets(
+    y_np: np.ndarray,
+    scales: np.ndarray | None,
+) -> np.ndarray:
+    """Apply ASINH only when scales are provided (otherwise keep raw dB)."""
     y_np = y_np.astype(np.float32, copy=True)
+    if scales is None:
+        return y_np
     return np.arcsinh(y_np / scales).astype(np.float32)
 
 
@@ -425,8 +439,9 @@ def load_and_prepare_data() -> tuple[
 # ============================================================
 
 # X scaling is independent of all tuned hyperparameters.
-# Target transforms/scalers are precomputed for every discrete ASINH-scale
-# pair so that each Ray worker can reuse them instead of recomputing them.
+# With ASINH disabled, create ONE target cache entry for raw dB + StandardScaler.
+# With ASINH enabled, create one target cache entry per pair of ASINH scales.
+# Workers reuse the precomputed arrays instead of recomputing transformations.
 
 
 def build_tune_data_bundle(
@@ -439,23 +454,35 @@ def build_tune_data_bundle(
     x_train_scaled = x_scaler.fit_transform(x_train_np).astype(np.float32)
     x_val_scaled = x_scaler.transform(x_val_np).astype(np.float32)
 
-    target_cache: dict[tuple[float, float], dict[str, np.ndarray]] = {}
+    # None is the cache key for StandardScaler-only targets.
+    target_cache: dict[
+        tuple[float, float] | None,
+        dict[str, np.ndarray],
+    ] = {}
 
-    for nf_scale in NF_ASINH_CHOICES:
-        for gain_scale in GAIN_ASINH_CHOICES:
-            asinh_scales = make_asinh_scales(nf_scale, gain_scale)
+    if USE_ASINH_TARGET:
+        target_keys: list[tuple[float, float] | None] = [
+            (float(nf), float(gain))
+            for nf in NF_ASINH_CHOICES
+            for gain in GAIN_ASINH_CHOICES
+        ]
+    else:
+        target_keys = [None]
 
-            y_train_trans = transform_targets(y_train_np, asinh_scales)
-            y_val_trans = transform_targets(y_val_np, asinh_scales)
+    for key in target_keys:
+        asinh_scales = make_asinh_scales(*key) if key is not None else None
+        y_train_trans = transform_targets(y_train_np, asinh_scales)
+        y_val_trans = transform_targets(y_val_np, asinh_scales)
 
-            y_scaler = StandardScaler()
-            y_train_scaled = y_scaler.fit_transform(y_train_trans).astype(np.float32)
-            y_val_scaled = y_scaler.transform(y_val_trans).astype(np.float32)
+        # Fit solely on training samples; reuse the same scaler on validation.
+        y_scaler = StandardScaler()
+        y_train_scaled = y_scaler.fit_transform(y_train_trans).astype(np.float32)
+        y_val_scaled = y_scaler.transform(y_val_trans).astype(np.float32)
 
-            target_cache[(float(nf_scale), float(gain_scale))] = {
-                "y_train": y_train_scaled,
-                "y_val": y_val_scaled,
-            }
+        target_cache[key] = {
+            "y_train": y_train_scaled,
+            "y_val": y_val_scaled,
+        }
 
     return {
         "x_train": x_train_scaled,
@@ -465,18 +492,19 @@ def build_tune_data_bundle(
 
 
 
-def get_target_cache_entry(
-    data_bundle: dict,
-    nf_asinh_scale: float,
-    gain_asinh_scale: float,
-) -> dict:
-    key = (float(nf_asinh_scale), float(gain_asinh_scale))
+def get_target_cache_entry(data_bundle: dict, config: dict) -> dict:
+    if USE_ASINH_TARGET:
+        key: tuple[float, float] | None = (
+            float(config["nf_asinh_scale"]),
+            float(config["gain_asinh_scale"]),
+        )
+    else:
+        key = None
+
     try:
         return data_bundle["target_cache"][key]
     except KeyError as exc:
-        raise KeyError(
-            f"No precomputed target transform for nf={key[0]}, gain={key[1]}."
-        ) from exc
+        raise KeyError(f"No precomputed target transform for key={key!r}.") from exc
 
 
 
@@ -498,11 +526,7 @@ def prepare_trial_device_data(
     device: torch.device,
     data_bundle: dict,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    entry = get_target_cache_entry(
-        data_bundle,
-        float(config["nf_asinh_scale"]),
-        float(config["gain_asinh_scale"]),
-    )
+    entry = get_target_cache_entry(data_bundle, config)
 
     x_train_t = host_array_to_device(data_bundle["x_train"], device)
     y_train_t = host_array_to_device(entry["y_train"], device)
@@ -728,10 +752,9 @@ def short_dirname_creator(trial) -> str:
 
 
 def build_search_space() -> dict:
-    # Search space preserved from the original Ray Tune script.
     # Ray automatically converts these Tune distributions into the
     # representation expected by OptunaSearch.
-    return {
+    search_space = {
         "lr": tune.loguniform(1e-4, 1e-3),
         "batch_size": tune.choice(BATCH_CHOICES),
         "hidden_sizes": tune.choice(
@@ -751,9 +774,14 @@ def build_search_space() -> dict:
             ]
         ),
         "weight_decay": tune.loguniform(1e-6, 1e-4),
-        "nf_asinh_scale": tune.choice(NF_ASINH_CHOICES),
-        "gain_asinh_scale": tune.choice(GAIN_ASINH_CHOICES),
     }
+
+    # No ASINH keys exist in Ray Tune's search space when the flag is False.
+    if USE_ASINH_TARGET:
+        search_space["nf_asinh_scale"] = tune.choice(NF_ASINH_CHOICES)
+        search_space["gain_asinh_scale"] = tune.choice(GAIN_ASINH_CHOICES)
+
+    return search_space
 
 
 
@@ -775,6 +803,10 @@ def save_search_outputs(results, best_result) -> None:
 
     best_summary = {
         "best_config": best_config,
+        "use_asinh_target": USE_ASINH_TARGET,
+        "target_preprocessing": (
+            "asinh_then_standard" if USE_ASINH_TARGET else "standard_only"
+        ),
         "best_val_loss": float(best_result.metrics["val_loss"]),
         "best_epoch_reported": int(best_result.metrics.get("epoch", -1)),
         "metric": "val_loss",
@@ -798,11 +830,14 @@ def save_search_outputs(results, best_result) -> None:
         "hidden_sizes": json.dumps(best_config["hidden_sizes"]),
         "number_hidden_layers": len(best_config["hidden_sizes"]),
         "weight_decay": best_config["weight_decay"],
-        "nf_asinh_scale": best_config["nf_asinh_scale"],
-        "gain_asinh_scale": best_config["gain_asinh_scale"],
+        "use_asinh_target": USE_ASINH_TARGET,
         "best_val_loss": best_summary["best_val_loss"],
         "best_epoch_reported": best_summary["best_epoch_reported"],
     }
+    if USE_ASINH_TARGET:
+        flat_best_row["nf_asinh_scale"] = best_config["nf_asinh_scale"]
+        flat_best_row["gain_asinh_scale"] = best_config["gain_asinh_scale"]
+
     pd.DataFrame([flat_best_row]).to_csv(BEST_CONFIG_CSV, index=False)
 
     results_df = results.get_dataframe()
@@ -878,7 +913,10 @@ def main() -> None:
             trainable,
             param_space=search_space,
             run_config=RunConfig(
-                name="Extended_NN_4_5_6_Layer_Hyperparameter_Search",
+                name=(
+                    "Hyperparameter_Search_"
+                    + ("ASINH" if USE_ASINH_TARGET else "NoASINH")
+                ),
                 storage_path=str(RAY_STORAGE_PATH),
                 verbose=1,
             ),
@@ -898,6 +936,7 @@ def main() -> None:
         print(f"Max concurrent trials      : {MAX_CONCURRENT_TRIALS}")
         print(f"Number of requested trials : {NUM_TRIALS}")
         print("Search algorithm            : Optuna")
+        print(f"Use ASINH targets           : {USE_ASINH_TARGET}")
         print("Early-stopping scheduler    : ASHA")
         print(f"Trials per physical GPU     : {TRIALS_PER_GPU if TUNE_USE_GPU else 0}")
         print(f"Batch choices               : {BATCH_CHOICES}")
