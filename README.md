@@ -1,10 +1,8 @@
 # Deep-Learning Surrogate Model for Quantum-Noise Computation in Fiber-Optic Phase-Sensitive Amplifiers
 
 This repository contains the numerical simulation codes, datasets, deep-learning models, and prediction tools developed as part of the research work presented in the paper:
-
 **"Deep-learning surrogate model for rapid quantum-noise computation in dual-pump fiber-optic phase-sensitive amplifiers"**
 
-**Authors:** Yousra Bouasria, Debanuj Chatterjee, Abdessamad Belfakir, and Debabrota Basu.
 
 ## Project Overview
 
