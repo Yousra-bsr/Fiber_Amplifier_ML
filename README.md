@@ -24,7 +24,7 @@ The repository is organized into the following directories:
 
 ### 1. `Numerical_data_generation/`
 
-Contains Python script used to perform numerical simulations and generate the datasets required for the machine-learning models.
+Contains script used to perform numerical simulations and generate the datasets required for the machine-learning models.
 
 The numerical simulations is based on a semi-quantum approach. The script is used to compute the noise figure and maximum gain for different amplifier input parameters.
 
