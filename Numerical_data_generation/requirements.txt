@@ -1,5 +1,0 @@
-# Numerical arrays and random sampling
-numpy>=1.26,<3.0
-
-# JIT compilation and parallel CPU simulations
-numba>=0.61,<1.0
